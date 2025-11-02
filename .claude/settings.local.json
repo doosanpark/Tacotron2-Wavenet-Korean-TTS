@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(if [ ! -d \"data\" ])",
+      "Bash(then mkdir data)",
+      "Bash(fi)",
+      "Bash(python preprocess.py:*)",
+      "Bash(python train_tacotron2.py:*)",
+      "Bash(where:*)",
+      "Bash(conda --version:*)",
+      "Bash(start:*)",
+      "Bash(./Miniconda3-latest-Windows-x86_64.exe:*)",
+      "Bash(export PATH=\"$HOME/miniconda3/Scripts:$HOME/miniconda3:$PATH\")",
+      "Bash(conda create:*)",
+      "Bash(conda tos accept:*)",
+      "Bash(conda activate:*)",
+      "Bash($HOME/miniconda3/envs/tf115/python.exe -m pip install:*)",
+      "Bash($HOME/miniconda3/envs/tf115/python.exe:*)",
+      "Bash(~/miniconda3/envs/tf115/python.exe:*)",
+      "Bash(~/miniconda3/envs/tf115_py37/python.exe -m pip install:*)",
+      "Bash(conda install:*)",
+      "Bash(~/miniconda3/envs/tf115_py37/python.exe:*)",
+      "Bash(timeout 30 bash:*)",
+      "Bash(timeout 60 bash:*)",
+      "Bash(tee:*)",
+      "Bash(timeout 120 bash:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(~/miniconda3/Scripts/conda.exe create:*)",
+      "Bash(~/miniconda3/envs/tf2_gpu/python.exe -m pip install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
