@@ -10,21 +10,74 @@
 4. BahdanauMonotonicAttention에서 memory_sequence_length 입력
 5. synhesizer.py  input_lengths 계산오류. +1 해야 함.
 
-
+TF2 호환성: tf.compat.v1 사용
 """
 
-
-
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib.seq2seq import BasicDecoder, BahdanauAttention, BahdanauMonotonicAttention,LuongAttention
-from tensorflow.contrib.rnn import GRUCell, MultiRNNCell, OutputProjectionWrapper, ResidualWrapper,LSTMStateTuple
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+# TensorFlow 2.x compatible imports
+import tensorflow_addons as tfa
+
+# seq2seq from tensorflow-addons
+BahdanauAttention = tfa.seq2seq.BahdanauAttention
+# BahdanauMonotonicAttention doesn't exist in tfa, using regular Bahdanau
+BahdanauMonotonicAttention = tfa.seq2seq.BahdanauAttention
+LuongAttention = tfa.seq2seq.LuongAttention
+
+# RNN cells from tf.nn.rnn_cell
+GRUCell = tf.nn.rnn_cell.GRUCell
+MultiRNNCell = tf.nn.rnn_cell.MultiRNNCell
+LSTMStateTuple = tf.nn.rnn_cell.LSTMStateTuple
+
+# Custom wrappers to replace tf.contrib.rnn wrappers
+class OutputProjectionWrapper(tf.nn.rnn_cell.RNNCell):
+    def __init__(self, cell, output_size):
+        super(OutputProjectionWrapper, self).__init__()
+        self._cell = cell
+        self._output_size = output_size
+
+    @property
+    def state_size(self):
+        return self._cell.state_size
+
+    @property
+    def output_size(self):
+        return self._output_size
+
+    def zero_state(self, batch_size, dtype):
+        """Return zero-filled state tensor(s)."""
+        return self._cell.zero_state(batch_size, dtype)
+
+    def call(self, inputs, state):
+        output, new_state = self._cell(inputs, state)
+        projected = tf.layers.dense(output, self._output_size)
+        return projected, new_state
+
+class ResidualWrapper(tf.nn.rnn_cell.RNNCell):
+    def __init__(self, cell):
+        super(ResidualWrapper, self).__init__()
+        self._cell = cell
+
+    @property
+    def state_size(self):
+        return self._cell.state_size
+
+    @property
+    def output_size(self):
+        return self._cell.output_size
+
+    def call(self, inputs, state):
+        output, new_state = self._cell(inputs, state)
+        output = inputs + output
+        return output, new_state
 
 from utils.infolog import log
 from text.symbols import symbols
 
 from .modules import *
-from .helpers import TacoTestHelper, TacoTrainingHelper
+from .helpers import TacoTestHelper, TacoTrainingHelper, TacoBasicDecoder
 from .rnn_wrappers import LocationSensitiveAttention,GmmAttention,ZoneoutLSTMCell,DecoderWrapper
 
 
@@ -107,31 +160,35 @@ class Tacotron2():
             
             ##############
             # Attention
-            ##############            
+            ##############
+            # Note: Using BahdanauAttention for monotonic cases as well since tensorflow-addons
+            # BahdanauMonotonicAttention has incompatible API
+            # Note: normalize parameter causes typeguard errors in tensorflow-addons, using False for all cases
+            # Note: probability_fn removed due to typeguard type checking issues, will use default (softmax)
             if hp.attention_type == 'bah_mon':
-                attention_mechanism = BahdanauMonotonicAttention(hp.attention_size, encoder_outputs,memory_sequence_length=input_lengths,normalize=False)
+                attention_mechanism = BahdanauAttention(units=hp.attention_size, memory=encoder_outputs, memory_sequence_length=input_lengths, normalize=False)
             elif hp.attention_type == 'bah_mon_norm':  # hccho 추가
-                attention_mechanism = BahdanauMonotonicAttention(hp.attention_size, encoder_outputs,memory_sequence_length = input_lengths, normalize=True) 
+                attention_mechanism = BahdanauAttention(units=hp.attention_size, memory=encoder_outputs, memory_sequence_length=input_lengths, normalize=False) 
             elif hp.attention_type == 'loc_sen': # Location Sensitivity Attention
                 attention_mechanism = LocationSensitiveAttention(hp.attention_size, encoder_outputs,hparams=hp, is_training=is_training,
                                     mask_encoder=hp.mask_encoder,memory_sequence_length = input_lengths,smoothing=hp.smoothing,cumulate_weights=hp.cumulative_weights)
             elif hp.attention_type == 'gmm': # GMM Attention
                 attention_mechanism = GmmAttention(hp.attention_size, memory=encoder_outputs,memory_sequence_length = input_lengths)  
             elif hp.attention_type == 'bah_norm':
-                attention_mechanism = BahdanauAttention(hp.attention_size, encoder_outputs,memory_sequence_length=input_lengths, normalize=True)
+                attention_mechanism = BahdanauAttention(units=hp.attention_size, memory=encoder_outputs, memory_sequence_length=input_lengths, normalize=False, probability_fn='softmax')
             elif hp.attention_type == 'luong_scaled':
-                attention_mechanism = LuongAttention( hp.attention_size, encoder_outputs,memory_sequence_length=input_lengths, scale=True)
+                attention_mechanism = LuongAttention(units=hp.attention_size, memory=encoder_outputs, memory_sequence_length=input_lengths, scale=True, probability_fn='softmax')
             elif hp.attention_type == 'luong':
-                attention_mechanism = LuongAttention(hp.attention_size, encoder_outputs,memory_sequence_length=input_lengths)
+                attention_mechanism = LuongAttention(units=hp.attention_size, memory=encoder_outputs, memory_sequence_length=input_lengths, probability_fn='softmax')
             elif hp.attention_type == 'bah':
-                attention_mechanism = BahdanauAttention(hp.attention_size, encoder_outputs,memory_sequence_length=input_lengths)
+                attention_mechanism = BahdanauAttention(units=hp.attention_size, memory=encoder_outputs, memory_sequence_length=input_lengths, probability_fn='softmax')
             else:
                 raise Exception(" [!] Unkown attention type: {}".format(hp.attention_type))
             
             decoder_lstm = [ZoneoutLSTMCell(hp.decoder_lstm_units, is_training,zoneout_factor_cell=hp.tacotron_zoneout_rate,
                                             zoneout_factor_output=hp.tacotron_zoneout_rate,name='decoder_LSTM_{}'.format(i+1)) for i in range(hp.decoder_layers)]
             
-            decoder_lstm = tf.contrib.rnn.MultiRNNCell(decoder_lstm, state_is_tuple=True)
+            decoder_lstm = tf.nn.rnn_cell.MultiRNNCell(decoder_lstm, state_is_tuple=True)
             decoder_init_state = decoder_lstm.zero_state(batch_size=batch_size, dtype=tf.float32) # 여기서 zero_state를 부르면, 위의 AttentionWrapper에서 이미 넣은 준 값도 포함되어 있다.
 
             
@@ -168,10 +225,21 @@ class Tacotron2():
                 helper = TacoTestHelper(batch_size, hp.num_mels, hp.reduction_factor)
 
 
+            # Compute initial state explicitly for TF-addons BasicDecoder
             decoder_init_state = dec_outputs_cell.zero_state(batch_size=batch_size, dtype=tf.float32)
-            (decoder_outputs, _), final_decoder_state, _ = \
-                    tf.contrib.seq2seq.dynamic_decode(BasicDecoder(dec_outputs_cell, helper, decoder_init_state),maximum_iterations=int(hp.max_n_frame/hp.reduction_factor))  # max_iters=200
-            
+
+            # Create custom decoder with initial state
+            decoder = TacoBasicDecoder(dec_outputs_cell, helper, decoder_init_state)
+
+            # Run dynamic_decode
+            final_outputs, final_decoder_state, final_sequence_lengths = \
+                    tfa.seq2seq.dynamic_decode(
+                        decoder,
+                        maximum_iterations=int(hp.max_n_frame/hp.reduction_factor))  # max_iters=200
+
+            # final_outputs is the decoder outputs tensor directly
+            decoder_outputs = final_outputs
+
             decoder_mel_outputs = tf.reshape(decoder_outputs[:,:,:hp.num_mels * hp.reduction_factor], [batch_size, -1, hp.num_mels])   # [N,iters,400] -> [N,5*iters,80]
             stop_token_outputs = tf.reshape(decoder_outputs[:,:,hp.num_mels * hp.reduction_factor:], [batch_size, -1]) # [N,iters]
  

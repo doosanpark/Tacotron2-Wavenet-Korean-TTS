@@ -1,0 +1,413 @@
+# coding: utf-8
+import os
+import sys
+import time
+import math
+import argparse
+import traceback
+import subprocess
+import numpy as np
+from jamo import h2j
+
+# Add CUDA library path for TensorFlow GPU support
+cuda_lib_path = r'C:\ProgramData\miniconda3\envs\tf2_gpu\Library\bin'
+if os.path.exists(cuda_lib_path):
+    os.environ['PATH'] = cuda_lib_path + os.pathsep + os.environ.get('PATH', '')
+    print('[INFO] CUDA library path added: %s' % cuda_lib_path)
+
+# UTF-8 인코딩 설정 (한글 오류 메시지 정상 표시)
+if sys.platform == 'win32':
+    try:
+        import codecs
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+            sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+    except:
+        pass  # 인코딩 설정 실패해도 계속 진행
+
+# TensorFlow import 시도 및 상세 오류 처리
+try:
+    import tensorflow as tf
+    # TensorFlow 2.x에서 1.x 스타일 코드 실행을 위해 eager execution 비활성화
+    tf.compat.v1.disable_eager_execution()
+    print('[SUCCESS] TensorFlow imported successfully')
+    print('TensorFlow version: %s' % tf.__version__)
+except ImportError as e:
+    print('=' * 80)
+    print('[ERROR] Failed to import TensorFlow')
+    print('=' * 80)
+    print('Error type: %s' % type(e).__name__)
+    print('Error message: %s' % str(e))
+    print('Error details: %s' % repr(e))
+    print('')
+    print('This usually means:')
+    print('  1. TensorFlow is not installed')
+    print('  2. TensorFlow version mismatch with Python version')
+    print('  3. Missing dependencies')
+    print('=' * 80)
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+except Exception as e:
+    print('=' * 80)
+    print('[ERROR] Unexpected error while importing TensorFlow')
+    print('=' * 80)
+    print('Error type: %s' % type(e).__name__)
+    print('Error message: %s' % str(e))
+    print('Error details: %s' % repr(e))
+    print('')
+    if 'DLL' in str(e) or 'dll' in str(e).lower():
+        print('DLL load failed - This usually means:')
+        print('  1. CUDA/cuDNN DLL files not found')
+        print('  2. CUDA version mismatch with TensorFlow')
+        print('  3. Missing Visual C++ Redistributable')
+        print('  4. PATH environment variable missing CUDA/bin directory')
+    print('=' * 80)
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+from datetime import datetime
+from functools import partial
+
+from hparams import hparams, hparams_debug_string
+from tacotron2 import create_model, get_most_recent_checkpoint
+
+from utils import ValueWindow, prepare_dirs
+from utils import infolog, warning, plot, load_hparams
+from utils import get_git_revision_hash, get_git_diff, str2bool, parallel_run
+
+from utils.audio import save_wav, inv_spectrogram
+from text import sequence_to_text, text_to_sequence
+from datasets.datafeeder_tacotron2 import DataFeederTacotron2
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+log = infolog.log
+
+
+
+def get_git_commit():
+    subprocess.check_output(['git', 'diff-index', '--quiet', 'HEAD'])     # Verify client is clean
+    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()[:10]
+    log('Git commit: %s' % commit)
+    return commit
+
+
+def add_stats(model, model2=None, scope_name='train'):
+    with tf.compat.v1.variable_scope(scope_name) as scope:
+        summaries = [
+                tf.summary.scalar('loss_mel', model.mel_loss),
+                tf.summary.scalar('loss_linear', model.linear_loss),
+                tf.summary.scalar('loss', model.loss_without_coeff),
+        ]
+
+        if scope_name == 'train':
+            gradient_norms = [tf.norm(grad) for grad in model.gradients if grad is not None]
+
+            summaries.extend([
+                    tf.summary.scalar('learning_rate', model.learning_rate),
+                    tf.summary.scalar('max_gradient_norm', tf.reduce_max(gradient_norms)),
+            ])
+
+    if model2 is not None:
+        with tf.compat.v1.variable_scope('gap_test-train') as scope:
+            summaries.extend([
+                    tf.summary.scalar('loss_mel',
+                            model.mel_loss - model2.mel_loss),
+                    tf.summary.scalar('loss_linear', 
+                            model.linear_loss - model2.linear_loss),
+                    tf.summary.scalar('loss',
+                            model.loss_without_coeff - model2.loss_without_coeff),
+            ])
+
+    return tf.compat.v1.summary.merge(summaries)
+
+
+def save_and_plot_fn(args, log_dir, step, loss, prefix):
+    idx, (seq, spec, align) = args
+
+    audio_path = os.path.join(log_dir, '{}-step-{:09d}-audio{:03d}.wav'.format(prefix, step, idx))
+    align_path = os.path.join(log_dir, '{}-step-{:09d}-align{:03d}.png'.format(prefix, step, idx))
+
+    waveform = inv_spectrogram(spec.T,hparams)
+    save_wav(waveform, audio_path,hparams.sample_rate)
+
+    info_text = 'step={:d}, loss={:.5f}'.format(step, loss)
+    if 'korean_cleaners' in [x.strip() for x in hparams.cleaners.split(',')]:
+        log('Training korean : Use jamo')
+        plot.plot_alignment( align, align_path, info=info_text, text=sequence_to_text(seq,skip_eos_and_pad=True, combine_jamo=True), isKorean=True)
+    else:
+        log('Training non-korean : X use jamo')
+        plot.plot_alignment(align, align_path, info=info_text,text=sequence_to_text(seq,skip_eos_and_pad=True, combine_jamo=False), isKorean=False) 
+
+def save_and_plot(sequences, spectrograms,alignments, log_dir, step, loss, prefix):
+
+    fn = partial(save_and_plot_fn,log_dir=log_dir, step=step, loss=loss, prefix=prefix)
+    items = list(enumerate(zip(sequences, spectrograms, alignments)))
+
+    parallel_run(fn, items, parallel=False)
+    log('Test finished for step {}.'.format(step))
+
+
+def train(log_dir, config):
+    config.data_paths = config.data_paths  # ['datasets/moon']
+
+    data_dirs = config.data_paths  # ['datasets/moon\\data']
+    num_speakers = len(data_dirs)
+    config.num_test = config.num_test_per_speaker * num_speakers  # 2*1
+
+    if num_speakers > 1 and hparams.model_type not in ["multi-speaker", "simple"]:
+        raise Exception("[!] Unkown model_type for multi-speaker: {}".format(config.model_type))
+
+    commit = get_git_commit() if config.git else 'None'
+    checkpoint_path = os.path.join(log_dir, 'model.ckpt') # 'logdir-tacotron\\moon_2018-08-28_13-06-42\\model.ckpt'
+
+    #log(' [*] git recv-parse HEAD:\n%s' % get_git_revision_hash())  # hccho: 주석 처리
+    log('='*50)
+    #log(' [*] dit diff:\n%s' % get_git_diff())
+    log('='*50)
+    log(' [*] Checkpoint path: %s' % checkpoint_path)
+    log(' [*] Loading training data from: %s' % data_dirs)
+    log(' [*] Using model: %s' % config.model_dir)  # 'logdir-tacotron\\moon_2018-08-28_13-06-42'
+    log(hparams_debug_string())
+
+    # Set up DataFeeder:
+    coord = tf.train.Coordinator()
+    with tf.compat.v1.variable_scope('datafeeder') as scope:
+        # DataFeeder의 6개 placeholder: train_feeder.inputs, train_feeder.input_lengths, train_feeder.loss_coeff, train_feeder.mel_targets, train_feeder.linear_targets, train_feeder.speaker_id
+        train_feeder = DataFeederTacotron2(coord, data_dirs, hparams, config, 32,data_type='train', batch_size=config.batch_size)
+        test_feeder = DataFeederTacotron2(coord, data_dirs, hparams, config, 8, data_type='test', batch_size=config.num_test)
+
+    # Set up model:
+
+    global_step = tf.Variable(0, name='global_step', trainable=False)
+
+    with tf.compat.v1.variable_scope('model') as scope:
+        model = create_model(hparams)
+        model.initialize(inputs=train_feeder.inputs, input_lengths=train_feeder.input_lengths,num_speakers=num_speakers,speaker_id=train_feeder.speaker_id,
+                         mel_targets=train_feeder.mel_targets, linear_targets=train_feeder.linear_targets,is_training=True,
+                         loss_coeff=train_feeder.loss_coeff,stop_token_targets=train_feeder.stop_token_targets)
+
+        model.add_loss()
+        model.add_optimizer(global_step)
+        train_stats = add_stats(model, scope_name='train') # legacy
+
+    with tf.compat.v1.variable_scope('model', reuse=True) as scope:
+        test_model = create_model(hparams)
+        test_model.initialize(inputs=test_feeder.inputs, input_lengths=test_feeder.input_lengths,num_speakers=num_speakers,speaker_id=test_feeder.speaker_id,
+                         mel_targets=test_feeder.mel_targets, linear_targets=test_feeder.linear_targets,is_training=False,
+                         loss_coeff=test_feeder.loss_coeff,stop_token_targets=test_feeder.stop_token_targets)
+        
+        test_model.add_loss()
+
+
+    # Bookkeeping:
+    step = 0
+    time_window = ValueWindow(100)
+    loss_window = ValueWindow(100)
+    saver = tf.compat.v1.train.Saver(max_to_keep=None, keep_checkpoint_every_n_hours=2)
+
+    # GPU 디바이스 확인 및 로그
+    try:
+        log('Checking TensorFlow version...')
+        log('TensorFlow version: %s' % tf.__version__)
+        
+        log('Checking GPU availability...')
+        from tensorflow.python.client import device_lib
+        local_device_protos = device_lib.list_local_devices()
+        
+        log('All devices found:')
+        for device in local_device_protos:
+            log('  Device: %s (Type: %s, Memory: %s)' % (device.name, device.device_type, device.memory_limit))
+        
+        gpu_devices = [x.name for x in local_device_protos if x.device_type == 'GPU']
+        if gpu_devices:
+            log('GPU devices found: %s' % ', '.join(gpu_devices))
+            for device in local_device_protos:
+                if device.device_type == 'GPU':
+                    log('GPU Details - Name: %s, Memory Limit: %s' % (device.name, device.memory_limit))
+        else:
+            log('WARNING: No GPU devices found! Training will use CPU (slower).')
+            log('This is intentional for avoiding GPU compatibility issues.')
+    except Exception as e:
+        log('ERROR checking GPU availability')
+        log('Error type: %s' % type(e).__name__)
+        log('Error message: %s' % str(e))
+        log('Error details: %s' % repr(e))
+        import traceback
+        log('Traceback:\n%s' % traceback.format_exc())
+        raise
+    
+    # CPU/GPU 사용 설정 (CPU fallback 활성화)
+    sess_config = tf.compat.v1.ConfigProto(
+        log_device_placement=True,  # 디바이스 배치 정보 로깅 활성화
+        allow_soft_placement=True,  # GPU 실패 시 CPU로 전환 허용
+        inter_op_parallelism_threads=0,
+        intra_op_parallelism_threads=0
+    )
+    # GPU가 있을 경우에만 GPU 설정 적용
+    if gpu_devices:
+        sess_config.gpu_options.allow_growth = True
+        sess_config.gpu_options.per_process_gpu_memory_fraction = 0.90
+        sess_config.gpu_options.visible_device_list = '0'  # 첫 번째 GPU만 사용
+        log('GPU configuration: allow_growth=True, memory_fraction=0.90, visible_device=0')
+    else:
+        log('CPU configuration: using CPU for training')
+
+    # Train!
+    with tf.compat.v1.Session(config=sess_config) as sess:
+        try:
+            summary_writer = tf.compat.v1.summary.FileWriter(log_dir, sess.graph)
+            sess.run(tf.compat.v1.global_variables_initializer())
+
+            if config.load_path:
+                # Restore from a checkpoint if the user requested it.
+                restore_path = get_most_recent_checkpoint(config.model_dir)
+                saver.restore(sess, restore_path)
+                log('Resuming from checkpoint: %s at commit: %s' % (restore_path, commit), slack=True)
+            elif config.initialize_path:
+                restore_path = get_most_recent_checkpoint(config.initialize_path)
+                saver.restore(sess, restore_path)
+                log('Initialized from checkpoint: %s at commit: %s' % (restore_path, commit), slack=True)
+
+                zero_step_assign = tf.compat.v1.assign(global_step, 0)
+                sess.run(zero_step_assign)
+
+                start_step = sess.run(global_step)
+                log('='*50)
+                log(' [*] Global step is reset to {}'.format(start_step))
+                log('='*50)
+            else:
+                log('Starting new training run at commit: %s' % commit, slack=True)
+
+            start_step = sess.run(global_step)
+
+            train_feeder.start_in_session(sess, start_step)
+            test_feeder.start_in_session(sess, start_step)
+
+            while not coord.should_stop() and step < 2000:
+                start_time = time.time()
+                step, loss, opt = sess.run([global_step, model.loss_without_coeff, model.optimize])
+
+                time_window.append(time.time() - start_time)
+                loss_window.append(loss)
+
+                message = 'Step %-7d [%.03f sec/step, loss=%.05f, avg_loss=%.05f]' % (step, time_window.average, loss, loss_window.average)
+                log('[%s] %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), message), slack=(step % config.checkpoint_interval == 0))
+
+                if loss > 100 or math.isnan(loss):
+                    log('Loss exploded to %.05f at step %d!' % (loss, step), slack=True)
+                    raise Exception('Loss Exploded')
+
+                if step % config.summary_interval == 0:
+                    log('Writing summary at step: %d' % step)
+
+
+                    summary_writer.add_summary(sess.run( train_stats), step)
+
+                if step % config.checkpoint_interval == 0:
+                    log('Saving checkpoint to: %s-%d' % (checkpoint_path, step))
+                    saver.save(sess, checkpoint_path, global_step=step)
+
+                if step % config.test_interval == 0:
+                    log('Saving audio and alignment...')
+                    num_test = config.num_test
+
+                    fetches = [
+                            model.inputs[:num_test],
+                            model.linear_outputs[:num_test],
+                            model.alignments[:num_test],
+                            test_model.inputs[:num_test],
+                            test_model.linear_outputs[:num_test],
+                            test_model.alignments[:num_test],
+                    ]
+
+
+                    sequences, spectrograms, alignments, test_sequences, test_spectrograms, test_alignments =  sess.run(fetches)
+
+
+                    #librosa는 ffmpeg가 있어야 한다.
+                    save_and_plot(sequences[:1], spectrograms[:1], alignments[:1], log_dir, step, loss, "train")  # spectrograms: (num_test,200,1025), alignments: (num_test,encoder_length,decoder_length)
+                    save_and_plot(test_sequences, test_spectrograms, test_alignments, log_dir, step, loss, "test")
+
+        except Exception as e:
+            log('=' * 80)
+            log('GPU TRAINING FAILED - Detailed Error Information')
+            log('=' * 80)
+            log('Exception type: %s' % type(e).__name__)
+            log('Exception message: %s' % str(e))
+            log('=' * 80)
+            log('Full traceback:')
+            log('=' * 80)
+            try:
+                import sys
+                error_trace = ''.join(traceback.format_exception(type(e), e, sys.exc_info()[2]))
+            except:
+                error_trace = traceback.format_exc()
+            log(error_trace)
+            log('=' * 80)
+            log('GPU Device Information at failure:')
+            try:
+                from tensorflow.python.client import device_lib
+                local_device_protos = device_lib.list_local_devices()
+                for device in local_device_protos:
+                    log('Device: %s (Type: %s, Memory: %s)' % (device.name, device.device_type, device.memory_limit))
+            except:
+                log('Could not retrieve device information')
+            log('=' * 80)
+            log('Exiting due to GPU exception', slack=True)
+            traceback.print_exc()
+            coord.request_stop(e)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--log_dir', default='logdir-tacotron2')
+    
+    parser.add_argument('--data_paths', default='.\\data\\moon,.\\data\\son')
+    #parser.add_argument('--data_paths', default='D:\\hccho\\Tacotron-Wavenet-Vocoder-hccho\\data\\small1,D:\\hccho\\Tacotron-Wavenet-Vocoder-hccho\\data\\small2')
+
+
+    #parser.add_argument('--load_path', default=None)   # 아래의 'initialize_path'보다 우선 적용
+    parser.add_argument('--load_path', default=None)
+    #parser.add_argument('--load_path', default='logdir-tacotron2/moon+son_2019-03-01_10-35-44')
+    
+    
+    parser.add_argument('--initialize_path', default=None)   # ckpt로 부터 model을 restore하지만, global step은 0에서 시작
+
+    parser.add_argument('--batch_size', type=int, default=4)
+    parser.add_argument('--num_test_per_speaker', type=int, default=2)
+    parser.add_argument('--random_seed', type=int, default=123)
+    parser.add_argument('--summary_interval', type=int, default=100)
+    
+    parser.add_argument('--test_interval', type=int, default=2000)  # 500
+    
+    parser.add_argument('--checkpoint_interval', type=int, default=2000) # 2000
+    parser.add_argument('--skip_path_filter', type=str2bool, default=False, help='Use only for debugging')
+
+    parser.add_argument('--slack_url', help='Slack webhook URL to get periodic reports.')
+    parser.add_argument('--git', action='store_true', help='If set, verify that the client is clean.')  # The store_true option automatically creates a default value of False.
+
+    config = parser.parse_args()
+    config.data_paths = config.data_paths.split(",")
+    setattr(hparams, "num_speakers", len(config.data_paths))
+
+    prepare_dirs(config, hparams)
+
+    log_path = os.path.join(config.model_dir, 'train.log')
+    infolog.init(log_path, config.model_dir, config.slack_url)
+
+    tf.compat.v1.set_random_seed(config.random_seed)
+    print(config.data_paths)
+
+
+    if config.load_path is not None and config.initialize_path is not None:
+        raise Exception(" [!] Only one of load_path and initialize_path should be set")
+
+    train(config.model_dir, config)
+
+
+if __name__ == '__main__':
+    main()

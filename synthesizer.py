@@ -21,7 +21,8 @@ import argparse
 import numpy as np
 from glob import glob
 from tqdm import tqdm
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from functools import partial
 
 from hparams import hparams
@@ -34,7 +35,9 @@ from text import text_to_sequence, sequence_to_text
 from datasets.datafeeder_tacotron2 import _prepare_inputs
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-tf.logging.set_verbosity(tf.logging.ERROR)
+# TF2 compat: logging 설정
+import logging
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
 class Synthesizer(object):
     def close(self):
@@ -145,11 +148,11 @@ class Synthesizer(object):
 
         if speaker_ids is not None:
             if type(speaker_ids) == dict:
-                speaker_embed_table = sess.run(
+                speaker_embed_table = self.sess.run(
                         self.model.speaker_embed_table)
 
                 speaker_embed =  [speaker_ids[speaker_id] * speaker_embed_table[speaker_id] for speaker_id in speaker_ids]
-                feed_dict.update({ self.model.speaker_embed_table: np.tile() })
+                feed_dict.update({ self.model.speaker_embed_table: np.tile(speaker_embed, [1, 1, 1]) })
             else:
                 feed_dict[self.model.speaker_id] = speaker_ids
 

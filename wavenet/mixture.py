@@ -6,7 +6,8 @@ https://github.com/openai/pixel-cnn/blob/master/pixel_cnn_pp/nn.py
 https://github.com/r9y9/wavenet_vocoder/blob/master/wavenet_vocoder/mixture.py
 https://github.com/azraelkuan/tensorflow_wavenet_vocoder/tree/dev
 """
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 
 def log_sum_exp(x):
@@ -14,14 +15,14 @@ def log_sum_exp(x):
     axis = len(x.get_shape()) - 1
     m = tf.reduce_max(x, axis)
     m2 = tf.reduce_max(x, axis, keepdims=True)
-    return m + tf.log(tf.reduce_sum(tf.exp(x - m2), axis))
+    return m + tf.math.log(tf.reduce_sum(tf.exp(x - m2), axis))
 
 
 def log_prob_from_logits(x):
     """ numerically stable log_softmax implementation that prevents overflow """
     axis = len(x.get_shape()) - 1
     m = tf.reduce_max(x, axis, keepdims=True)
-    return x - m - tf.log(tf.reduce_sum(tf.exp(x - m), axis, keepdims=True))
+    return x - m - tf.math.log(tf.reduce_sum(tf.exp(x - m), axis, keepdims=True))
 
 #  https://github.com/Rayhane-mamah/Tacotron-2/issues/155  <--- 설명 있음
 def discretized_mix_logistic_loss(y_hat, y, num_class=256, log_scale_min=float(np.log(1e-14)), reduce=True):
@@ -70,7 +71,7 @@ def discretized_mix_logistic_loss(y_hat, y, num_class=256, log_scale_min=float(n
 
     log_probs = tf.where(y < -0.999, log_cdf_plus,
                          tf.where(y > 0.999, log_one_minus_cdf_min,
-                                  tf.where(cdf_delta > 1e-5, tf.log(tf.maximum(cdf_delta, 1e-12)),log_pdf_mid - np.log((num_class - 1) / 2))))
+                                  tf.where(cdf_delta > 1e-5, tf.math.log(tf.maximum(cdf_delta, 1e-12)),log_pdf_mid - np.log((num_class - 1) / 2))))
 
     log_probs = log_probs + tf.nn.log_softmax(logit_probs, -1)
     # log_probs = log_probs + log_prob_from_logits(logit_probs)
@@ -100,15 +101,15 @@ def sample_from_discretized_mix_logistic(y, log_scale_min=float(np.log(1e-14))):
 
     # u: random_uniform --> -log(-log(u)): standard Gumbel random sample
     # category 결정을 위해 logit_probs(softmax 취하기 전의 값) + ( -log(-log(u)) )   ---> argmax를 취하면 category가 결정된다.
-    sel = tf.one_hot(tf.argmax(logit_probs - tf.log(-tf.log(tf.random_uniform(tf.shape(logit_probs), minval=1e-5, maxval=1. - 1e-5))), 2), depth=nr_mix, dtype=tf.float32)
+    sel = tf.one_hot(tf.argmax(logit_probs - tf.math.log(-tf.math.log(tf.random.uniform(tf.shape(logit_probs), minval=1e-5, maxval=1. - 1e-5))), 2), depth=nr_mix, dtype=tf.float32)
 
     means = tf.reduce_sum(y[:, :, nr_mix:nr_mix * 2] * sel, axis=2)
 
     log_scales = tf.maximum(tf.reduce_sum(y[:, :, nr_mix * 2:nr_mix * 3] * sel, axis=2), log_scale_min)
 
     # output audio를 만들기 위해 logistic distribution으로 부터 sampling
-    u = tf.random_uniform(tf.shape(means), minval=1e-5, maxval=1. - 1e-5)
-    x = means + tf.exp(log_scales) * (tf.log(u) - tf.log(1. - u))   # u을 logistic distribution의 cdf의 역함수에 대입.
+    u = tf.random.uniform(tf.shape(means), minval=1e-5, maxval=1. - 1e-5)
+    x = means + tf.exp(log_scales) * (tf.math.log(u) - tf.math.log(1. - u))   # u을 logistic distribution의 cdf의 역함수에 대입.
 
     x = tf.minimum(tf.maximum(x, -1.), 1.)
     return x

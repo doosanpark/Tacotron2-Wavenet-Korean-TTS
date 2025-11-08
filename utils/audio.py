@@ -2,7 +2,8 @@
 import librosa
 import librosa.filters
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from scipy import signal
 from scipy.io import wavfile
 
@@ -398,11 +399,13 @@ def _griffin_lim_tensorflow(S,hparams):
 
 def _istft_tensorflow(stfts,hparams):
     n_fft, hop_length, win_length = _stft_parameters(hparams)
-    return tf.contrib.signal.inverse_stft(stfts, win_length, hop_length, n_fft)
+    # TF2 compatible: tf.contrib.signal moved to tf.signal
+    return tf.signal.inverse_stft(stfts, win_length, hop_length, n_fft)
 
 def _stft_tensorflow(signals,hparams):
     n_fft, hop_length, win_length = _stft_parameters(hparams)
-    return tf.contrib.signal.stft(signals, win_length, hop_length, n_fft, pad_end=False)
+    # TF2 compatible: tf.contrib.signal moved to tf.signal
+    return tf.signal.stft(signals, win_length, hop_length, n_fft, pad_end=False)
 
 def _stft_parameters(hparams):
     n_fft = (hparams.num_freq - 1) * 2  # hparams.num_freq = 1025

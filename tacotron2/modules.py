@@ -1,10 +1,38 @@
 # coding: utf-8
 # Code based on https://github.com/keithito/tacotron/blob/master/models/tacotron.py
 
-import tensorflow as tf
-from tensorflow.contrib.rnn import GRUCell
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+# TensorFlow 2.x compatible imports
+import tensorflow_addons as tfa
+
+# RNN cells from tf.nn.rnn_cell
+GRUCell = tf.nn.rnn_cell.GRUCell
+
 from tensorflow.python.layers import core
-from tensorflow.contrib.seq2seq.python.ops.attention_wrapper import _bahdanau_score, _BaseAttentionMechanism, BahdanauAttention, AttentionWrapper, AttentionWrapperState
+
+# Attention mechanisms from tensorflow-addons
+BahdanauAttention = tfa.seq2seq.BahdanauAttention
+AttentionWrapper = tfa.seq2seq.AttentionWrapper
+AttentionWrapperState = tfa.seq2seq.AttentionWrapperState
+
+# Define _bahdanau_score and _BaseAttentionMechanism here to avoid circular import
+class _BaseAttentionMechanism:
+    """Base class for attention mechanisms"""
+    pass
+
+def _bahdanau_score(processed_query, keys, normalize):
+    """Bahdanau attention scoring function"""
+    dtype = processed_query.dtype
+    num_units = keys.shape[-1].value or tf.shape(keys)[-1]
+    v = tf.get_variable("attention_v", [num_units], dtype=dtype)
+    if normalize:
+        g = tf.get_variable("attention_g", dtype=dtype, initializer=tf.sqrt((1. / num_units)))
+        normed_v = g * v * tf.rsqrt(tf.reduce_sum(tf.square(v)))
+    else:
+        normed_v = v
+    return tf.reduce_sum(normed_v * tf.tanh(keys + tf.expand_dims(processed_query, 1)), [2])
 
 
 def prenet(inputs, is_training, layer_sizes, drop_prob, scope=None):

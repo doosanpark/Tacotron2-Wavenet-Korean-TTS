@@ -1,5 +1,13 @@
 # coding: utf-8
 import os
+import sys
+
+# Add CUDA library path for TensorFlow GPU support
+cuda_lib_path = r'C:\ProgramData\miniconda3\envs\tf2_gpu\Library\bin'
+if os.path.exists(cuda_lib_path):
+    os.environ['PATH'] = cuda_lib_path + os.pathsep + os.environ.get('PATH', '')
+    print('[INFO] CUDA library path added: %s' % cuda_lib_path)
+
 import time
 import math
 import argparse
@@ -7,7 +15,76 @@ import traceback
 import subprocess
 import numpy as np
 from jamo import h2j
-import tensorflow as tf
+
+# UTF-8 인코딩 설정 (한글 오류 메시지 정상 표시)
+if sys.platform == 'win32':
+    try:
+        import codecs
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+            sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+    except:
+        pass  # 인코딩 설정 실패해도 계속 진행
+
+# TensorFlow 2.x 호환성: TF1 스타일 API 사용
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+# GPU 설정 (TensorFlow 2.x + CUDA 12)
+print('[INFO] Configuring GPU settings for TensorFlow 2.x + CUDA 12...')
+try:
+    # GPU 메모리 증가 허용 (필요한 만큼만 할당)
+    physical_devices = tf.config.list_physical_devices('GPU')
+    if physical_devices:
+        print(f'[SUCCESS] Found {len(physical_devices)} GPU(s):')
+        for gpu in physical_devices:
+            print(f'  - {gpu}')
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print('[SUCCESS] GPU memory growth enabled')
+    else:
+        print('[WARNING] No GPU found, using CPU')
+except Exception as e:
+    print(f'[WARNING] GPU configuration failed: {e}')
+    print('[INFO] Continuing with default settings...')
+
+# TensorFlow version check
+try:
+    print('[SUCCESS] TensorFlow imported successfully')
+    print('TensorFlow version: %s' % tf.__version__)
+except ImportError as e:
+    print('=' * 80)
+    print('[ERROR] Failed to import TensorFlow')
+    print('=' * 80)
+    print('Error type: %s' % type(e).__name__)
+    print('Error message: %s' % str(e))
+    print('Error details: %s' % repr(e))
+    print('')
+    print('This usually means:')
+    print('  1. TensorFlow is not installed')
+    print('  2. TensorFlow version mismatch with Python version')
+    print('  3. Missing dependencies')
+    print('=' * 80)
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+except Exception as e:
+    print('=' * 80)
+    print('[ERROR] Unexpected error while importing TensorFlow')
+    print('=' * 80)
+    print('Error type: %s' % type(e).__name__)
+    print('Error message: %s' % str(e))
+    print('Error details: %s' % repr(e))
+    print('')
+    if 'DLL' in str(e) or 'dll' in str(e).lower():
+        print('DLL load failed - This usually means:')
+        print('  1. CUDA/cuDNN DLL files not found')
+        print('  2. CUDA version mismatch with TensorFlow')
+        print('  3. Missing Visual C++ Redistributable')
+        print('  4. PATH environment variable missing CUDA/bin directory')
+    print('=' * 80)
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 from datetime import datetime
 from functools import partial
 
@@ -24,7 +101,9 @@ from datasets.datafeeder_tacotron2 import DataFeederTacotron2
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+# TF2 compat: logging 설정
+import logging
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 log = infolog.log
 
 
@@ -150,12 +229,24 @@ def train(log_dir, config):
     loss_window = ValueWindow(100)
     saver = tf.train.Saver(max_to_keep=None, keep_checkpoint_every_n_hours=2)
 
-    sess_config = tf.ConfigProto(log_device_placement=False,allow_soft_placement=True)
-    sess_config.gpu_options.allow_growth=True
+    # GPU 활성화 - TF2 + CUDA 12
+    log('Checking TensorFlow version...')
+    log('TensorFlow version: %s' % tf.__version__)
+    log('=' * 80)
+    log('GPU ENABLED - Running with TensorFlow 2.x + CUDA 12')
+    log('GPU memory growth enabled for efficient memory usage')
+    log('=' * 80)
+
+    # GPU 설정 (메모리 관리 최적화)
+    sess_config = tf.ConfigProto(
+        allow_soft_placement=True,  # 연산을 자동으로 적절한 디바이스에 배치
+        log_device_placement=False,  # 디바이스 배치 로깅 비활성화 (성능 향상)
+    )
+    sess_config.gpu_options.allow_growth = True  # GPU 메모리 필요시 증가
+    log('GPU configuration applied: allow_growth=True')
 
     # Train!
-    #with tf.Session(config=sess_config) as sess:
-    with tf.Session() as sess:
+    with tf.Session(config=sess_config) as sess:
         try:
             summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
             sess.run(tf.global_variables_initializer())
@@ -185,7 +276,7 @@ def train(log_dir, config):
             train_feeder.start_in_session(sess, start_step)
             test_feeder.start_in_session(sess, start_step)
 
-            while not coord.should_stop():
+            while not coord.should_stop() and step < 100000:
                 start_time = time.time()
                 step, loss, opt = sess.run([global_step, model.loss_without_coeff, model.optimize])
 
@@ -193,7 +284,7 @@ def train(log_dir, config):
                 loss_window.append(loss)
 
                 message = 'Step %-7d [%.03f sec/step, loss=%.05f, avg_loss=%.05f]' % (step, time_window.average, loss, loss_window.average)
-                log(message, slack=(step % config.checkpoint_interval == 0))
+                log('[%s] %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), message), slack=(step % config.checkpoint_interval == 0))
 
                 if loss > 100 or math.isnan(loss):
                     log('Loss exploded to %.05f at step %d!' % (loss, step), slack=True)
@@ -231,7 +322,22 @@ def train(log_dir, config):
                     save_and_plot(test_sequences, test_spectrograms, test_alignments, log_dir, step, loss, "test")
 
         except Exception as e:
-            log('Exiting due to exception: %s' % e, slack=True)
+            log('=' * 80)
+            log('TRAINING FAILED - Detailed Error Information')
+            log('=' * 80)
+            log('Exception type: %s' % type(e).__name__)
+            log('Exception message: %s' % str(e))
+            log('=' * 80)
+            log('Full traceback:')
+            log('=' * 80)
+            try:
+                import sys
+                error_trace = ''.join(traceback.format_exception(type(e), e, sys.exc_info()[2]))
+            except:
+                error_trace = traceback.format_exc()
+            log(error_trace)
+            log('=' * 80)
+            log('Exiting due to exception', slack=True)
             traceback.print_exc()
             coord.request_stop(e)
 
@@ -252,12 +358,12 @@ def main():
     
     parser.add_argument('--initialize_path', default=None)   # ckpt로 부터 model을 restore하지만, global step은 0에서 시작
 
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_test_per_speaker', type=int, default=2)
     parser.add_argument('--random_seed', type=int, default=123)
     parser.add_argument('--summary_interval', type=int, default=100)
     
-    parser.add_argument('--test_interval', type=int, default=500)  # 500
+    parser.add_argument('--test_interval', type=int, default=2000)  # 500
     
     parser.add_argument('--checkpoint_interval', type=int, default=2000) # 2000
     parser.add_argument('--skip_path_filter', type=str2bool, default=False, help='Use only for debugging')
@@ -274,7 +380,7 @@ def main():
     log_path = os.path.join(config.model_dir, 'train.log')
     infolog.init(log_path, config.model_dir, config.slack_url)
 
-    tf.set_random_seed(config.random_seed)
+    tf.compat.v1.set_random_seed(config.random_seed)
     print(config.data_paths)
 
 

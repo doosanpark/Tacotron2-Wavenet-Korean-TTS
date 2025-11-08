@@ -1,5 +1,6 @@
 #  coding: utf-8
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 def create_adam_optimizer(learning_rate, momentum):
     return tf.train.AdamOptimizer(learning_rate=learning_rate,
@@ -23,15 +24,15 @@ optimizer_factory = {'adam': create_adam_optimizer,
 def mu_law_encode(audio, quantization_channels):
     '''Quantizes waveform amplitudes.'''
     with tf.name_scope('encode'):
-        mu = tf.to_float(quantization_channels - 1)
+        mu = tf.cast(quantization_channels - 1, tf.float32)
         # Perform mu-law companding transformation (ITU-T, 1988).
         # Minimum operation is here to deal with rare large amplitudes caused
         # by resampling.
         safe_audio_abs = tf.minimum(tf.abs(audio), 1.0)
-        magnitude = tf.log1p(mu * safe_audio_abs) / tf.log1p(mu)  # tf.log1p(x) = log(1+x)
+        magnitude = tf.math.log1p(mu * safe_audio_abs) / tf.math.log1p(mu)  # tf.math.log1p(x) = log(1+x)
         signal = tf.sign(audio) * magnitude
         # Quantize signal to the specified number of levels.
-        return tf.to_int32((signal + 1) / 2 * mu + 0.5)
+        return tf.cast((signal + 1) / 2 * mu + 0.5, tf.int32)
 
 
 def mu_law_decode(output, quantization_channels, quantization=True):
@@ -40,7 +41,7 @@ def mu_law_decode(output, quantization_channels, quantization=True):
         mu = quantization_channels - 1
         # Map values back to [-1, 1].
         if quantization:
-            signal = 2 * (tf.to_float(output) / mu) - 1
+            signal = 2 * (tf.cast(output, tf.float32) / mu) - 1
         else:
             signal = output
         # Perform inverse of mu-law transformation.
@@ -48,7 +49,7 @@ def mu_law_decode(output, quantization_channels, quantization=True):
         return tf.sign(signal) * magnitude
 
 
-class SubPixelConvolution(tf.layers.Conv2D):
+class SubPixelConvolution(tf.keras.layers.Conv2D):
     '''Sub-Pixel Convolutions are vanilla convolutions followed by Periodic Shuffle.
 
     They serve the purpose of upsampling (like deconvolutions) but are faster and less prone to checkerboard artifact with the right initialization.

@@ -1,0 +1,5 @@
+/logdir-tacotron2
+/text
+/text
+*.log
+*.pyc

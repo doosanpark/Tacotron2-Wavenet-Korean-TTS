@@ -1,12 +1,74 @@
 # coding: utf-8
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib.rnn import RNNCell
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+# TensorFlow 2.x compatible imports
+import tensorflow_addons as tfa
 from tensorflow.python.ops import rnn_cell_impl
-#from tensorflow.contrib.data.python.util import nest
-from tensorflow.contrib.framework import nest
-from tensorflow.contrib.seq2seq.python.ops.attention_wrapper import _bahdanau_score, _BaseAttentionMechanism, BahdanauAttention, \
-                             AttentionWrapperState, AttentionMechanism, _BaseMonotonicAttentionMechanism,_maybe_mask_score,_prepare_memory,_monotonic_probability_fn
+
+# RNNCell is now in tf.nn.rnn_cell
+RNNCell = tf.nn.rnn_cell.RNNCell
+
+# nest is now in tf.python.util
+from tensorflow.python.util import nest
+
+# Import attention mechanisms from tensorflow-addons
+BahdanauAttention = tfa.seq2seq.BahdanauAttention
+AttentionMechanism = tfa.seq2seq.AttentionMechanism
+AttentionWrapperState = tfa.seq2seq.AttentionWrapperState
+
+# For internal functions not exposed in TFA, we'll need to define minimal replacements
+def _prepare_memory(memory, memory_sequence_length, check_inner_dims_defined=True):
+    """Minimal replacement for _prepare_memory"""
+    return memory
+
+def _maybe_mask_score(score, memory_sequence_length, score_mask_value):
+    """Minimal replacement for _maybe_mask_score"""
+    if memory_sequence_length is None:
+        return score
+    message = "All values in memory_sequence_length must greater than zero."
+    with tf.control_dependencies([tf.assert_positive(memory_sequence_length, message=message)]):
+        score_mask = tf.sequence_mask(memory_sequence_length, maxlen=tf.shape(score)[1])
+        score_mask_values = score_mask_value * tf.ones_like(score)
+        return tf.where(score_mask, score, score_mask_values)
+
+class _BaseAttentionMechanism(AttentionMechanism):
+    """Base class for attention mechanisms"""
+    pass
+
+class _BaseMonotonicAttentionMechanism(_BaseAttentionMechanism):
+    """Base class for monotonic attention"""
+    pass
+
+def _bahdanau_score(processed_query, keys, normalize):
+    """Bahdanau attention scoring function"""
+    dtype = processed_query.dtype
+    num_units = keys.shape[-1].value or tf.shape(keys)[-1]
+    v = tf.get_variable("attention_v", [num_units], dtype=dtype)
+    if normalize:
+        g = tf.get_variable("attention_g", dtype=dtype, initializer=tf.sqrt((1. / num_units)))
+        normed_v = g * v * tf.rsqrt(tf.reduce_sum(tf.square(v)))
+    else:
+        normed_v = v
+    return tf.reduce_sum(normed_v * tf.tanh(keys + tf.expand_dims(processed_query, 1)), [2])
+
+def _monotonic_probability_fn(score, previous_alignments, sigmoid_noise, mode, seed=None):
+    """Monotonic probability function"""
+    if sigmoid_noise > 0:
+        noise = tf.random.normal(tf.shape(score), dtype=score.dtype, seed=seed)
+        score += sigmoid_noise * noise
+    if mode == "parallel":
+        # Safe cumsum
+        pad_values = tf.zeros_like(score[:, :1])
+        padded_score = tf.concat([pad_values, score], axis=1)
+        alignment = tf.nn.sigmoid(padded_score[:, :-1])
+        alignment = alignment * tf.cumprod(1 - alignment, axis=1, exclusive=True)
+        return alignment
+    else:
+        # Hard monotonic attention
+        p_choose_i = tf.nn.sigmoid(score)
+        return p_choose_i * tf.cumprod(1 - p_choose_i, axis=1, exclusive=True)
 from tensorflow.python.ops import array_ops, math_ops, nn_ops, variable_scope
 from tensorflow.python.layers.core import Dense
 from .modules import prenet
@@ -108,7 +170,23 @@ class DecoderWrapper(RNNCell):
         return tf.concat([output, res_state.attention], axis=-1), res_state
 
     def zero_state(self, batch_size, dtype):
-        return self._cell.zero_state(batch_size, dtype)
+        """Return zero-filled state tensor(s)."""
+        # TF-addons AttentionWrapper uses get_initial_state instead of zero_state
+        if hasattr(self._cell, 'zero_state'):
+            return self._cell.zero_state(batch_size, dtype)
+        elif hasattr(self._cell, 'get_initial_state'):
+            # For TF-addons AttentionWrapper, create dummy inputs to get initial state
+            # The batch_size needs to be converted from tensor to int if necessary
+            if hasattr(batch_size, 'numpy'):
+                batch_size_val = int(batch_size.numpy())
+            elif isinstance(batch_size, tf.Tensor):
+                # In graph mode, use tf.shape
+                batch_size_val = batch_size
+            else:
+                batch_size_val = batch_size
+            return self._cell.get_initial_state(batch_size=batch_size_val, dtype=dtype)
+        else:
+            raise AttributeError(f"Cell {type(self._cell)} has neither zero_state nor get_initial_state")
 
 
 

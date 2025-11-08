@@ -1,9 +1,30 @@
 # -*- coding: utf-8 -*-
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 
-hparams = tf.contrib.training.HParams(
+# Simple HParams class for TF 2.x compatibility
+class HParams:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def values(self):
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+
+    def parse(self, values_string):
+        for pair in values_string.split(','):
+            if '=' in pair:
+                key, value = pair.split('=')
+                setattr(self, key.strip(), eval(value.strip()))
+
+    def to_json(self):
+        """Convert HParams to JSON string"""
+        import json
+        return json.dumps(self.values(), default=str)
+
+hparams = HParams(
     name = "Tacotron-2",
     
     # tacotron hyper parameter

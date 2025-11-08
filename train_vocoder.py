@@ -3,6 +3,7 @@
 - train data를 speaker를 분리된 디렉토리로 받아서, speaker id를 디렉토리별로 부과.
 - file name에서 speaker id를 추론하는 방식이 아님.
 
+TF2 호환성: tf.compat.v1 사용
 """
 
 from __future__ import print_function
@@ -13,7 +14,8 @@ import os
 import time
 import traceback
 from glob import glob
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from tensorflow.python.client import timeline
 from datetime import datetime
 from wavenet import WaveNetModel,mu_law_decode
@@ -21,7 +23,9 @@ from datasets import DataFeederWavenet
 from hparams import hparams
 from utils import validate_directories,load,save,infolog,get_tensors_in_checkpoint_file,build_tensors_in_checkpoint_file,plot,audio
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+# TF2 compat: logging 설정
+import logging
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 EPSILON = 0.001
 log = infolog.log
 
@@ -204,8 +208,10 @@ def main():
 
     run_metadata = tf.RunMetadata()
 
-    # Set up session
-    sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))  # log_device_placement=False --> cpu/gpu 자동 배치.
+    # Set up session (GPU 활성화)
+    sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    sess_config.gpu_options.allow_growth = True
+    sess = tf.Session(config=sess_config)
     init = tf.global_variables_initializer()
     sess.run(init)
     

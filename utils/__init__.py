@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import re,json,sys,os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from tqdm import tqdm
 from contextlib import closing
 from multiprocessing import Pool

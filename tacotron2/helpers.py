@@ -2,8 +2,92 @@
 # Code based on https://github.com/keithito/tacotron/blob/master/models/tacotron.py
 
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib.seq2seq import Helper
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+# TensorFlow 2.x compatible import
+import tensorflow_addons as tfa
+
+# Use Sampler from TF-addons as the base class (equivalent to Helper in TF 1.x)
+try:
+    from tensorflow_addons.seq2seq import Sampler
+    Helper = Sampler
+except ImportError:
+    # Fallback for older versions of TF-addons
+    class Helper:
+        """Base class for Helpers"""
+        @property
+        def batch_size(self):
+            raise NotImplementedError()
+
+        @property
+        def sample_ids_dtype(self):
+            raise NotImplementedError()
+
+        @property
+        def sample_ids_shape(self):
+            raise NotImplementedError()
+
+        def initialize(self, name=None):
+            raise NotImplementedError()
+
+        def sample(self, time, outputs, state, name=None):
+            raise NotImplementedError()
+
+        def next_inputs(self, time, outputs, state, sample_ids, name=None):
+            raise NotImplementedError()
+
+
+# Custom BasicDecoder that properly handles initial_state
+# Inherit from TF-addons BaseDecoder to satisfy type checks
+from tensorflow_addons.seq2seq import BaseDecoder
+
+class TacoBasicDecoder(BaseDecoder):
+    """Custom decoder that works with TF-addons dynamic_decode"""
+    def __init__(self, cell, sampler, initial_state):
+        super(TacoBasicDecoder, self).__init__()
+        self._cell = cell
+        self._sampler = sampler
+        self._initial_state = initial_state
+
+    @property
+    def batch_size(self):
+        # Return batch_size as a tensor if it's not already
+        batch_size = self._sampler.batch_size
+        if isinstance(batch_size, int):
+            return tf.constant(batch_size)
+        return batch_size
+
+    @property
+    def output_size(self):
+        return self._cell.output_size
+
+    @property
+    def output_dtype(self):
+        return tf.float32
+
+    def initialize(self, name=None):
+        """Initialize the decoder"""
+        finished, first_inputs = self._sampler.initialize()
+        return finished, first_inputs, self._initial_state
+
+    def step(self, time, inputs, state, name=None):
+        """Perform a decoding step"""
+        # Run one step of the cell
+        cell_outputs, cell_state = self._cell(inputs, state)
+
+        # Sample from the outputs
+        sample_ids = self._sampler.sample(
+            time=time, outputs=cell_outputs, state=cell_state)
+
+        # Get next inputs
+        finished, next_inputs, next_state = self._sampler.next_inputs(
+            time=time,
+            outputs=cell_outputs,
+            state=cell_state,
+            sample_ids=sample_ids)
+
+        return cell_outputs, next_state, next_inputs, finished
 
 
 # Adapted from tf.contrib.seq2seq.GreedyEmbeddingHelper

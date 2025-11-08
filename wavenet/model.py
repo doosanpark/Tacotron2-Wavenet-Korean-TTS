@@ -1,6 +1,7 @@
 #  coding: utf-8
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 from .ops import mu_law_encode,optimizer_factory,SubPixelConvolution
 from .mixture import discretized_mix_logistic_loss, sample_from_discretized_mix_logistic
@@ -67,7 +68,9 @@ class WaveNetModel(object):
                 input_batch = tf.pad(input_batch, tf.constant([(0, 0), (padding, 0), (0, 0)]))
 
             else:
-                self.dilation_queue[layer_index] =  tf.scatter_update(self.dilation_queue[layer_index],tf.range(self.batch_size),tf.concat([self.dilation_queue[layer_index][:,1:,:],input_batch],axis=1) )
+                # TF2 compatible: use Variable.assign instead of scatter_update
+                updated_queue = tf.concat([self.dilation_queue[layer_index][:,1:,:],input_batch],axis=1)
+                self.dilation_queue[layer_index].assign(updated_queue)
                 input_batch =  self.dilation_queue[layer_index]
 
 
@@ -214,7 +217,8 @@ class WaveNetModel(object):
         if self.global_condition_cardinality is not None:
             # Only lookup the embedding if the global condition is presented
             # as an integer of mutually-exclusive categories ...
-            embedding_table = tf.get_variable('gc_embedding', [self.global_condition_cardinality, self.global_condition_channels], dtype=tf.float32,initializer=tf.contrib.layers.xavier_initializer(uniform=False))   # (2, 32)
+            # TF2 compatible: xavier_initializer(uniform=False) = glorot_normal
+            embedding_table = tf.get_variable('gc_embedding', [self.global_condition_cardinality, self.global_condition_channels], dtype=tf.float32,initializer=tf.initializers.glorot_normal())   # (2, 32)
             embedding = tf.nn.embedding_lookup(embedding_table,global_condition)
         elif global_condition is not None:
             # ... else the global_condition (if any) is already provided
