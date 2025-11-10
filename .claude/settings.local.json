@@ -77,7 +77,8 @@
       "Bash(/c/ProgramData/miniconda3/Scripts/conda.exe env remove -n tf2_gpu -y)",
       "Bash(/c/ProgramData/miniconda3/Scripts/conda.exe create:*)",
       "Bash(/c/ProgramData/miniconda3/Scripts/conda.exe install:*)",
-      "Bash(export PATH=\"/c/ProgramData/miniconda3/envs/tf2_gpu/Library/bin:$PATH\":*)"
+      "Bash(export PATH=\"/c/ProgramData/miniconda3/envs/tf2_gpu/Library/bin:$PATH\":*)",
+      "Bash(\"logdir-tacotron2/moon+son_2025-11-09_02-06-17/params.json\")"
     ],
     "deny": [],
     "ask": []

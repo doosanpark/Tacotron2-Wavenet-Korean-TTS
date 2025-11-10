@@ -286,7 +286,7 @@ def train(log_dir, config):
             train_feeder.start_in_session(sess, start_step)
             test_feeder.start_in_session(sess, start_step)
 
-            while not coord.should_stop() and step < 2000:
+            while not coord.should_stop() and step < 300000:
                 start_time = time.time()
                 step, loss, opt = sess.run([global_step, model.loss_without_coeff, model.optimize])
 
@@ -382,9 +382,9 @@ def main():
     parser.add_argument('--random_seed', type=int, default=123)
     parser.add_argument('--summary_interval', type=int, default=100)
     
-    parser.add_argument('--test_interval', type=int, default=2000)  # 500
+    parser.add_argument('--test_interval', type=int, default=100000)  # 500
     
-    parser.add_argument('--checkpoint_interval', type=int, default=2000) # 2000
+    parser.add_argument('--checkpoint_interval', type=int, default=100000) # 2000
     parser.add_argument('--skip_path_filter', type=str2bool, default=False, help='Use only for debugging')
 
     parser.add_argument('--slack_url', help='Slack webhook URL to get periodic reports.')
