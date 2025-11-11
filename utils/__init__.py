@@ -287,7 +287,7 @@ def build_tensors_in_checkpoint_file(loaded_tensors):
     loader = tf.train.Saver(tensors_to_load)
     loader.restore(sess, CHECKPOINT_NAME)
     
-    new_saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=hparams.max_checkpoints)  # 최대 checkpoint 저장 갯수 지정
+    new_saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=None)  # 최대 checkpoint 저장 갯수 지정
     save(new_saver, sess, logdir, 0)
     exit()
 

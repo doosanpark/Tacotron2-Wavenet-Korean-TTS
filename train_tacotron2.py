@@ -227,7 +227,7 @@ def train(log_dir, config):
     step = 0
     time_window = ValueWindow(100)
     loss_window = ValueWindow(100)
-    saver = tf.train.Saver(max_to_keep=None, keep_checkpoint_every_n_hours=2)
+    saver = tf.train.Saver(max_to_keep=hparams.max_checkpoints, keep_checkpoint_every_n_hours=2)
 
     # GPU 활성화 - TF2 + CUDA 12
     log('Checking TensorFlow version...')
@@ -365,7 +365,7 @@ def main():
     
     parser.add_argument('--test_interval', type=int, default=100000)  # 500
     
-    parser.add_argument('--checkpoint_interval', type=int, default=100000) # 2000
+    parser.add_argument('--checkpoint_interval', type=int, default=5000) # Save checkpoint every 5000 steps
     parser.add_argument('--skip_path_filter', type=str2bool, default=False, help='Use only for debugging')
 
     parser.add_argument('--slack_url', help='Slack webhook URL to get periodic reports.')

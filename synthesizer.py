@@ -103,8 +103,11 @@ class Synthesizer(object):
             texts = [texts]
 
         if texts is not None and tokens is None:
+            print(f"[DEBUG] Input texts: {texts}")
             sequences = np.array([text_to_sequence(text) for text in texts])
+            print(f"[DEBUG] Converted sequences shape: {sequences.shape}, content: {sequences}")
             sequences = _prepare_inputs(sequences)
+            print(f"[DEBUG] Prepared sequences shape: {sequences.shape}, content: {sequences}")
         elif tokens is not None:
             sequences = tokens
 

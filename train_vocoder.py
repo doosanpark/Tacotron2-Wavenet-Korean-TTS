@@ -216,7 +216,7 @@ def main():
     sess.run(init)
     
     # Saver for storing checkpoints of the model.
-    saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=hparams.max_checkpoints)  # 최대 checkpoint 저장 갯수 지정
+    saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=None)  # 최대 checkpoint 저장 갯수 지정
     
     try:
         start_step = load(saver, sess, restore_from)  # checkpoint load

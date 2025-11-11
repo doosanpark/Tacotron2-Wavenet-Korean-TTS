@@ -1,0 +1,246 @@
+2025-11-11 01:47:24.320951: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cudart64_110.dll'; dlerror: cudart64_110.dll not found
+2025-11-11 01:47:24.321036: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
+WARNING:tensorflow:From C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\compat\v2_compat.py:107: disable_resource_variables (from tensorflow.python.ops.variable_scope) is deprecated and will be removed in a future version.
+Instructions for updating:
+non-resource variables are not supported in the long term
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:114: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  deep_dense = lambda x, dim,name: tf.layers.dense(x, dim, activation=tf.nn.softsign,name=name)   # softsign: x / (abs(x) + 1)
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:135: UserWarning: `tf.layers.conv1d` is deprecated and will be removed in a future version. Please Use `tf.keras.layers.Conv1D` instead.
+  x = tf.layers.conv1d(x,filters=hp.enc_conv_channels,kernel_size=hp.enc_conv_kernel_size,padding='same',activation=tf.nn.relu,name='Encoder_{}'.format(i))
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:136: UserWarning: `tf.layers.batch_normalization` is deprecated and will be removed in a future version. Please use `tf.keras.layers.BatchNormalization` instead. In particular, `tf.control_dependencies(tf.GraphKeys.UPDATE_OPS)` should not be used (consult the `tf.keras.layers.BatchNormalization` documentation).
+  x = tf.layers.batch_normalization(x, training=is_training)
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:137: UserWarning: `tf.layers.dropout` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dropout` instead.
+  x = tf.layers.dropout(x, rate=hp.dropout_prob, training=is_training, name='dropout_{}'.format(i))
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\rnn_wrappers.py:98: UserWarning: `tf.nn.rnn_cell.LSTMCell` is deprecated and will be removed in a future version. This class is equivalent as `tf.keras.layers.LSTMCell`, and will be replaced by that in Tensorflow 2.0.
+  self._cell = tf.nn.rnn_cell.LSTMCell(num_units, state_is_tuple=state_is_tuple, name=name)
+ERROR:tensorflow:==================================
+Object was never used (type <class 'tensorflow.python.framework.ops.Operation'>):
+<tf.Operation 'model/Decoder/decoder/assert_greater/Assert/Assert' type=Assert>
+If you want to mark it as used call its "mark_used()" method.
+It was originally created here:
+  File "C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\ops\check_ops.py", line 1057, in assert_greater
+    return _binary_assert('>', 'assert_greater', math_ops.greater, np.greater, x,  File "C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\ops\check_ops.py", line 427, in _binary_assert
+    return control_flow_ops.Assert(condition, data, summarize=summarize)  File "C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\util\traceback_utils.py", line 150, in error_handler
+    return fn(*args, **kwargs)  File "C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\util\dispatch.py", line 1176, in op_dispatch_handler
+    return dispatch_target(*args, **kwargs)  File "C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\util\tf_should_use.py", line 243, in wrapped
+    return _add_should_use_warning(fn(*args, **kwargs),
+==================================
+C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\autograph\impl\api.py:458: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  return f(*args, **kwargs)
+C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\autograph\impl\api.py:458: UserWarning: `tf.layers.dropout` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dropout` instead.
+  return f(*args, **kwargs)
+C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\tensorflow\python\autograph\impl\api.py:459: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  return f(*args)
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:251: UserWarning: `tf.layers.conv1d` is deprecated and will be removed in a future version. Please Use `tf.keras.layers.Conv1D` instead.
+  x = tf.layers.conv1d(x,filters=hp.postnet_channels,kernel_size=hp.postnet_kernel_size,padding='same',activation=activation,name='Postnet_{}'.format(i))
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:252: UserWarning: `tf.layers.batch_normalization` is deprecated and will be removed in a future version. Please use `tf.keras.layers.BatchNormalization` instead. In particular, `tf.control_dependencies(tf.GraphKeys.UPDATE_OPS)` should not be used (consult the `tf.keras.layers.BatchNormalization` documentation).
+  x = tf.layers.batch_normalization(x, training=is_training)
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:253: UserWarning: `tf.layers.dropout` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dropout` instead.
+  x = tf.layers.dropout(x, rate=hp.dropout_prob, training=is_training, name='Postnet_dropout_{}'.format(i))
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:255: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  residual = tf.layers.dense(x,hp.num_mels,name='residual_projection')
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\modules.py:119: UserWarning: `tf.layers.conv1d` is deprecated and will be removed in a future version. Please Use `tf.keras.layers.Conv1D` instead.
+  conv1d_output = tf.layers.conv1d(inputs,filters=channels,kernel_size=kernel_size,activation=activation,padding='same') # padding이 same이라 kenel size가 달라도 concat된다.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\modules.py:120: UserWarning: `tf.layers.batch_normalization` is deprecated and will be removed in a future version. Please use `tf.keras.layers.BatchNormalization` instead. In particular, `tf.control_dependencies(tf.GraphKeys.UPDATE_OPS)` should not be used (consult the `tf.keras.layers.BatchNormalization` documentation).
+  return tf.layers.batch_normalization(conv1d_output, training=is_training)
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\modules.py:62: UserWarning: `tf.layers.max_pooling1d` is deprecated and will be removed in a future version. Please use `tf.keras.layers.MaxPooling1D` instead.
+  maxpool_output = tf.layers.max_pooling1d(conv_outputs,pool_size=maxpool_width,strides=1,padding='same')  # maxpool_width = 2
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\modules.py:81: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  highway_input = tf.layers.dense(highway_input, rnn_size,name='highway_projection')
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\modules.py:111: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  H = tf.layers.dense(inputs,units=highway_dim, activation=tf.nn.relu,name='H_projection')
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\modules.py:112: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  T = tf.layers.dense(inputs,units=highway_dim, activation=tf.nn.sigmoid,name='T_projection',bias_initializer=tf.constant_initializer(-1.0))
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\modules.py:95: UserWarning: `tf.nn.rnn_cell.GRUCell` is deprecated and will be removed in a future version. This class is equivalent as `tf.keras.layers.GRUCell`, and will be replaced by that in Tensorflow 2.0.
+  cell_fw, cell_bw = GRUCell(rnn_size), GRUCell(rnn_size)
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\tacotron2\tacotron2.py:264: UserWarning: `tf.layers.dense` is deprecated and will be removed in a future version. Please use `tf.keras.layers.Dense` instead.
+  linear_outputs = tf.layers.dense(post_outputs, hp.num_freq,name='linear_spectogram_projection')    # [N, T_out, F(1025)]
+2025-11-11 01:47:31.141019: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-11-11 01:47:31.165791: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cudart64_110.dll'; dlerror: cudart64_110.dll not found
+2025-11-11 01:47:31.166124: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cublas64_11.dll'; dlerror: cublas64_11.dll not found
+2025-11-11 01:47:31.166440: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cublasLt64_11.dll'; dlerror: cublasLt64_11.dll not found
+2025-11-11 01:47:31.166695: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cufft64_10.dll'; dlerror: cufft64_10.dll not found
+2025-11-11 01:47:31.166934: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'curand64_10.dll'; dlerror: curand64_10.dll not found
+2025-11-11 01:47:31.167174: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cusolver64_11.dll'; dlerror: cusolver64_11.dll not found
+2025-11-11 01:47:31.167411: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cusparse64_11.dll'; dlerror: cusparse64_11.dll not found
+2025-11-11 01:47:31.167647: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cudnn64_8.dll'; dlerror: cudnn64_8.dll not found
+2025-11-11 01:47:31.167659: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1934] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2025-11-11 01:47:31.354408: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:354] MLIR V1 optimization pass is not enabled
+=== 시퀀스 변환 디버깅 ===
+
+
+테스트 1: 안녕하세요
+  원본 시퀀스 길이: 13
+  원본 시퀀스: [13 21 45  4 27 62 20 21 11 26 13 33  1]
+  Prepared shape: (1, 13)
+  Prepared 시퀀스: [13 21 45  4 27 62 20 21 11 26 13 33  1]
+
+테스트 2: 만나서 반갑습니다
+  원본 시퀀스 길이: 22
+  원본 시퀀스: [ 8 21 45  4 21 11 25 79  9 21 45  2 21 58 11 39 58  4 41  5 21  1]
+  Prepared shape: (1, 22)
+  Prepared 시퀀스: [ 8 21 45  4 21 11 25 79  9 21 45  2 21 58 11 39 58  4 41  5 21  1]
+
+
+=== 실제 합성 테스트 ===
+
+모델 로딩 중...
+ [*] Found lastest checkpoint: logdir-tacotron2/moon+son_2025-11-09_02-06-17\model.ckpt-40000
+Constructing model: tacotron
+UPDATE attention_kernel: (31,) -> [31]
+UPDATE postnet_kernel_size: (5,) -> [5]
+========================================
+ model_type: multi-speaker
+========================================
+Initialized Tacotron model. Dimensions: 
+    embedding:                512
+    encoder conv out:               512
+    encoder out:              512
+    attention out:            1024
+    decoder prenet lstm concat out :        1536
+    decoder cell out:         162
+    decoder out (2 frames):  162
+    decoder mel out:    80
+    mel out:    80
+    postnet out:              256
+    linear out:               1025
+  Tacotron Parameters       29.229 Million.
+Loading checkpoint: logdir-tacotron2/moon+son_2025-11-09_02-06-17\model.ckpt-40000
+
+입력 텍스트: 안녕하세요
+변환된 sequences shape: (1, 13)
+변환된 sequences: [[13 21 45  4 27 62 20 21 11 26 13 33  1]]
+Prepared sequences shape: (1, 13)
+Prepared sequences: [[13 21 45  4 27 62 20 21 11 26 13 33  1]]
+input_lengths: [13]
+
+음성 합성 중...
+plot_graph_and_save_audio:   0%|          | 0/1 [00:00<?, ?it/s]findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12615 (\N{HANGUL LETTER IEUNG}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12623 (\N{HANGUL LETTER A}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12596 (\N{HANGUL LETTER NIEUN}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12629 (\N{HANGUL LETTER YEO}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12622 (\N{HANGUL LETTER HIEUH}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12613 (\N{HANGUL LETTER SIOS}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12628 (\N{HANGUL LETTER E}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 12635 (\N{HANGUL LETTER YO}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 50504 (\N{HANGUL SYLLABLE AN}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 45397 (\N{HANGUL SYLLABLE NYEONG}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 54616 (\N{HANGUL SYLLABLE HA}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 49464 (\N{HANGUL SYLLABLE SE}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:62: UserWarning: Glyph 50836 (\N{HANGUL SYLLABLE YO}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12615 (\N{HANGUL LETTER IEUNG}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12623 (\N{HANGUL LETTER A}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12596 (\N{HANGUL LETTER NIEUN}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12629 (\N{HANGUL LETTER YEO}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12622 (\N{HANGUL LETTER HIEUH}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12613 (\N{HANGUL LETTER SIOS}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12628 (\N{HANGUL LETTER E}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 12635 (\N{HANGUL LETTER YO}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 50504 (\N{HANGUL SYLLABLE AN}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 45397 (\N{HANGUL SYLLABLE NYEONG}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 54616 (\N{HANGUL SYLLABLE HA}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 49464 (\N{HANGUL SYLLABLE SE}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+C:\Users\erid3\Documents\workspace\Tacotron2-Wavenet-Korean-TTS_GPU\utils\plot.py:71: UserWarning: Glyph 50836 (\N{HANGUL SYLLABLE YO}) missing from font(s) DejaVu Sans.
+  plt.savefig(path, format='png')
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+findfont: Font family 'NanumBarunGothic' not found.
+C:\ProgramData\miniconda3\envs\tf2_gpu\lib\site-packages\librosa\core\spectrum.py:266: UserWarning: n_fft=2048 is too large for input signal of length=1200
+  warnings.warn(
+plot_graph_and_save_audio: 100%|##########| 1/1 [00:01<00:00,  1.19s/it]plot_graph_and_save_audio: 100%|##########| 1/1 [00:01<00:00,  1.19s/it]
+ [*] Plot saved: logdir-tacotron2/debug_samples/2025-11-11_01-47-33.png
+완료!
