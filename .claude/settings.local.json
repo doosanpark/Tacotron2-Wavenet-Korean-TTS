@@ -80,7 +80,15 @@
       "Bash(export PATH=\"/c/ProgramData/miniconda3/envs/tf2_gpu/Library/bin:$PATH\":*)",
       "Bash(\"logdir-tacotron2/moon+son_2025-11-09_02-06-17/params.json\")",
       "Bash(pip:*)",
-      "Bash(cut:*)"
+      "Bash(cut:*)",
+      "Bash(C:/ProgramData/miniconda3/Scripts/conda.exe env list)",
+      "Bash(C:/ProgramData/miniconda3/envs/tf2_gpu/python.exe:*)",
+      "Bash(mkdir:*)",
+      "Bash(for step in 50000 100000)",
+      "Bash(do for text in \"초록 물결이 톡톡 튀는 젊음 처럼\" \"저희는 조은경교수님의 자연언어처리 수업을 듣고 있습니다.\" \"이번 프로젝트에서는 다양한 모델을 비교하면서 성능차이를 분석해 볼 예정입니다.\")",
+      "Bash(do C:/ProgramData/miniconda3/envs/tf2_gpu/python.exe:*)",
+      "Bash(for:*)",
+      "Bash(do basename=\"$f%.npy\")"
     ],
     "deny": [],
     "ask": []

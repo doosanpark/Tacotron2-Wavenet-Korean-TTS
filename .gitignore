@@ -3,3 +3,5 @@
 /text
 *.log
 *.pyc
+/data/KSS
+/.claude

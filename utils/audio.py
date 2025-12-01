@@ -195,8 +195,8 @@ def _build_mel_basis(hparams):
 
     #fmin: Set this to 55 if your speaker is male! if female, 95 should help taking off noise. (To test depending on dataset. Pitch info: male~[65, 260], female~[100, 525])
     #fmax: 7600, To be increased/reduced depending on data.
-    #return librosa.filters.mel(hparams.sample_rate, hparams.fft_size, n_mels=hparams.num_mels,fmin=hparams.fmin, fmax=hparams.fmax)
-    return librosa.filters.mel(hparams.sample_rate, hparams.fft_size, n_mels=hparams.num_mels)  # fmin=0, fmax= sample_rate/2.0
+    #return librosa.filters.mel(sr=hparams.sample_rate, n_fft=hparams.fft_size, n_mels=hparams.num_mels,fmin=hparams.fmin, fmax=hparams.fmax)
+    return librosa.filters.mel(sr=hparams.sample_rate, n_fft=hparams.fft_size, n_mels=hparams.num_mels)  # fmin=0, fmax= sample_rate/2.0
 
 def _amp_to_db(x, hparams):
     min_level = np.exp(hparams.min_level_db / 20 * np.log(10))  # min_level_db = -100

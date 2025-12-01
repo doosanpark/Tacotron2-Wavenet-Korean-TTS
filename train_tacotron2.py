@@ -346,8 +346,8 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--log_dir', default='logdir-tacotron2')
-    
-    parser.add_argument('--data_paths', default='.\\data\\moon,.\\data\\son')
+
+    parser.add_argument('--data_paths', default='.\\data\\kss')
     #parser.add_argument('--data_paths', default='D:\\hccho\\Tacotron-Wavenet-Vocoder-hccho\\data\\small1,D:\\hccho\\Tacotron-Wavenet-Vocoder-hccho\\data\\small2')
 
 
